@@ -16,7 +16,7 @@ from pyspark.sql.types import StringType, IntegerType, FloatType, DateType
 
 import utils.data_processing_bronze_table
 
-# to call this script: python bronze_data_snapshot.py --snapshotdate "2023-01-01"
+# to call this script: python bronze_data_snapshotdate.py --snapshotdate "2023-01-01"
 
 def main(snapshotdate):
     print('\n\n---starting job---\n\n')
@@ -35,16 +35,16 @@ def main(snapshotdate):
     if not os.path.exists(bronze_lms_directory):
         os.makedirs(bronze_lms_directory)
 
-    utils.data_processing_bronze_table(date_str, bronze_lms_directory, spark)
+    utils.data_processing_bronze_table.process_bronze_table(date_str, bronze_lms_directory, spark)
     
     spark.stop()
 
     print('\n\n---job completed---\n\n')
 
-    if __name__ == "__main__":
-        parser = argparse.ArgumentParser(description="run job")
-        parser.add_argument("--snapshotdate", type=str, required=True, help="YYYY-MM-DD")
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="run job")
+    parser.add_argument("--snapshotdate", type=str, required=True, help="YYYY-MM-DD")
 
-        args = parser.parse_args()
+    args = parser.parse_args()
 
-        main(args.snapshotdate)
+    main(args.snapshotdate)

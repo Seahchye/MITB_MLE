@@ -23,7 +23,7 @@ ENV PATH=$PATH:$JAVA_HOME/bin
 WORKDIR /app
 
 # Copy the requirements file into the container
-COPY requirements.txt ./
+COPY . .
 
 # Install Python dependencies (ensure that pyspark is in your requirements.txt,
 # or you can install it explicitly by uncommenting the next line)

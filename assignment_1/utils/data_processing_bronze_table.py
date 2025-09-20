@@ -20,13 +20,19 @@ def process_bronze_table(snapshot_date_str, bronze_lms_directory, spark):
 
     csv_file_path = glob.glob("data/*.csv")
 
-    dfs = [spark.read.csv(f, header=True, inferSchema= True) for f in csv_file_path]
+    dfs = []
+
+    for f in glob.glob("data/*.csv"):
+        df = spark.read.csv(f, header=True, inferSchema=True)
+        if dfs:
+            df = df.drop("snapshot_date")
+        dfs.append(df)
 
     merged = reduce(lambda df1, df2: df1.join(df2, on="Customer_ID", how="outer"), dfs)
 
     merged_filter = merged.filter(col("snapshot_date") == snapshot_date)
 
-    print(snapshot_date_str + 'row_count:', merged_filter.count())
+    print(snapshot_date_str + ' row_count:', merged_filter.count())
 
     partition_name = "bronze_loan_daily_" + snapshot_date_str.replace('-','_') + '.csv'
     filepath = bronze_lms_directory + partition_name

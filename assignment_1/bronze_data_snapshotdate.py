@@ -30,7 +30,7 @@ def main(snapshotdate):
 
     date_str = snapshotdate
 
-    bronze_lms_directory = "datamart/bronze/lms"
+    bronze_lms_directory = "datamart/bronze/lms/"
 
     if not os.path.exists(bronze_lms_directory):
         os.makedirs(bronze_lms_directory)

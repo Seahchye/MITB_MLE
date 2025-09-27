@@ -16,19 +16,25 @@ from pyspark.sql.functions import col
 from pyspark.sql.types import StringType, IntegerType, FloatType, DateType
 
 def process_bronze_table(snapshot_date_str, bronze_lms_directory, spark):
-    snapshot_date = datetime.strptime(snapshot_date_str, "%Y-%m-%d")
+    snapshot_date = datetime.strptime(snapshot_date_str, "%Y-%m-%d").date()
 
     csv_file_path = glob.glob("data/*.csv")
 
-    dfs = []
+    dfs = [spark.read.csv(f, header=True, inferSchema=True) for f in csv_file_path]
 
-    for f in glob.glob("data/*.csv"):
-        df = spark.read.csv(f, header=True, inferSchema=True)
-        if dfs:
-            df = df.drop("snapshot_date")
-        dfs.append(df)
+    merged = reduce(
+        lambda df1, df2: df1.join(df2, on=["Customer_ID", "snapshot_date"], how="outer"),
+        dfs
+    )
 
-    merged = reduce(lambda df1, df2: df1.join(df2, on="Customer_ID", how="outer"), dfs)
+    merged = merged.withColumn("snapshot_date", col("snapshot_date").cast("date"))
+
+    before = merged.count()
+    merged.dropDuplicates()
+    after = merged.count()
+
+    if before > after:
+        print(f"Removed {before - after} duplicate rows. All Customer_IDs are preserved.")
 
     merged_filter = merged.filter(col("snapshot_date") == snapshot_date)
 

@@ -108,6 +108,7 @@ def process_silver_table(snapshot_date_str, bronze_lms_directory, silver_loan_da
         "Total_EMI_per_month": FloatType(),
         "Amount_invested_monthly": FloatType(),
         "Monthly_Balance": FloatType(),
+        "installment_num": IntegerType(),
         "fe_1": IntegerType(),
         "fe_2": IntegerType(),
         "fe_3": IntegerType(),
@@ -156,7 +157,19 @@ def process_silver_table(snapshot_date_str, bronze_lms_directory, silver_loan_da
         "Credit_Utilization_Ratio": 0.0,
         "Total_EMI_per_month": 0.0,
         "Amount_invested_monthly": 0.0,
-        "Monthly_Balance": 0.0})
+        "Monthly_Balance": 0.0,
+        "Age": median_age,
+        "Occupation": 'Unknown',
+        "Num_Credit_Inquiries": 0,
+        "Outstanding_Debt": 0.0,
+        "installment_num": 0,
+        "loan_amt": 0,
+        "due_amt": 0,
+        "paid_amt": 0,
+        "overdue_amt": 0,
+        "balance": 0,
+        "mob": 0
+        })
 
     # save silver table - IRL connect to database to write
     partition_name = "silver_loan_daily_" + snapshot_date_str.replace('-','_') + '.parquet'

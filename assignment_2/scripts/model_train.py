@@ -116,7 +116,7 @@ def main(snapshotdate):
     
     drop_cols = {"loan_id", "Customer_ID", "label", "label_def", "snapshot_date"}
     
-    feature_cols = feature_cols = [
+    feature_cols = [
     c for c in data_pdf.columns
     if c not in drop_cols and pd.api.types.is_numeric_dtype(data_pdf[c])
     ]

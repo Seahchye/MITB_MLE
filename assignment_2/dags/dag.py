@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 default_args = {
     'owner': 'airflow',
     'depends_on_past': False,
-    'retries': 1,
+    'retries': 3,
     'retry_delay': timedelta(minutes=5),
 }
 
@@ -117,7 +117,15 @@ with DAG(
 
 
     # --- model inference ---
-    model_inference_start = DummyOperator(task_id="model_inference_start")
+    model_inference_start = BashOperator(
+    task_id='model_inference',
+    bash_command=(
+        f'cd /opt/airflow/scripts && '
+        f'python3 model_inference.py '
+        f'--snapshotdate "{{{{ ds }}}}" '   
+        f'--enddate "{end_date:%Y-%m-%d}"'  
+    ),
+)
 
     model_1_inference = DummyOperator(task_id="model_1_inference")
 
@@ -132,7 +140,15 @@ with DAG(
 
 
     # --- model monitoring ---
-    model_monitor_start = DummyOperator(task_id="model_monitor_start")
+    model_monitor_start = BashOperator(
+        task_id='model_monitor',
+        bash_command=(
+            'cd /opt/airflow/scripts && '
+            'python3 model_monitor.py '
+            '--snapshotdate "{{ ds }}" '
+            f'--enddate "{end_date:%Y-%m-%d}"'
+        ),
+    )
 
     model_1_monitor = DummyOperator(task_id="model_1_monitor")
 
@@ -148,7 +164,16 @@ with DAG(
 
     # --- model auto training ---
 
-    model_automl_start = DummyOperator(task_id="model_automl_start")
+    model_automl_start = BashOperator(
+        task_id='model_automl',
+        bash_command=(
+            'cd /opt/airflow/scripts && '
+            'python3 model_automl.py '
+            '--snapshotdate "{{ ds }}" '
+            f'--enddate "{end_date:%Y-%m-%d}" '
+            '--n_trials 25'
+        ),
+    )
     
     model_1_automl = DummyOperator(task_id="model_1_automl")
 

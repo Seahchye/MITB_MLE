@@ -35,15 +35,42 @@ def main(snapshotdate):
     # load arguments
     date_str = snapshotdate
     
-    # create bronze datalake
+    # Load LMS data
     bronze_lms_directory = "datamart/bronze/lms/"
     
     if not os.path.exists(bronze_lms_directory):
         os.makedirs(bronze_lms_directory)
 
-    # run data processing
-    utils.data_processing_bronze_table.process_bronze_table(date_str, bronze_lms_directory, spark)
+    # run loan data processing
+    utils.data_processing_bronze_table.process_bronze_loan_table(date_str, bronze_lms_directory, spark)
     
+    # Clickstream Data
+    bronze_clks_directory = "datamart/bronze/clks/"
+
+    if not os.path.exists(bronze_clks_directory):
+        os.makedirs(bronze_clks_directory)
+
+    # run clickstream data processing
+    utils.data_processing_bronze_table.process_bronze_clickstream_table(date_str, bronze_clks_directory, spark)
+    
+    # Load Attributes Data
+    bronze_attr_directory = "datamart/bronze/attr/"
+
+    if not os.path.exists(bronze_attr_directory):
+        os.makedirs(bronze_attr_directory)
+
+    # run attributes data processing
+    utils.data_processing_bronze_table.process_bronze_attributes_table(date_str, bronze_attr_directory, spark)
+
+    # Financials Data
+    bronze_fin_directory = "datamart/bronze/fin/"
+
+    if not os.path.exists(bronze_fin_directory):
+        os.makedirs(bronze_fin_directory)
+
+    # run financials data processing
+    utils.data_processing_bronze_table.process_bronze_financials_table(date_str, bronze_fin_directory, spark)
+
     # end spark session
     spark.stop()
     

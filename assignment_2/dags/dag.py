@@ -10,13 +10,15 @@ default_args = {
     'retry_delay': timedelta(minutes=5),
 }
 
+end_date=datetime(2024, 12, 1)
+
 with DAG(
     'dag',
     default_args=default_args,
     description='data pipeline run once a month',
     schedule_interval='0 0 1 * *',  # At 00:00 on day-of-month 1
     start_date=datetime(2023, 1, 1),
-    end_date=datetime(2024, 12, 1),
+    end_date=end_date,
     catchup=True,
 ) as dag:
 
@@ -24,7 +26,15 @@ with DAG(
 
     # --- label store ---
 
-    dep_check_source_label_data = DummyOperator(task_id="dep_check_source_label_data")
+    dep_check_source_label_data = BashOperator(
+    task_id="dep_check_source_label_data",
+    bash_command=(
+        "test -s /opt/airflow/scripts/data/feature_clickstream.csv && "
+        "test -s /opt/airflow/scripts/data/features_attributes.csv && "
+        "test -s /opt/airflow/scripts/data/features_financials.csv && "
+        "test -s /opt/airflow/scripts/data/lms_loan_daily.csv"
+    ),
+)
 
     bronze_label_store = BashOperator(
         task_id='run_bronze_label_store',
@@ -35,11 +45,36 @@ with DAG(
         ),
     )
 
-    silver_label_store = DummyOperator(task_id="silver_label_store")
+    silver_label_store = BashOperator(
+        task_id='run_silver_label_store',
+        bash_command=(
+            'cd /opt/airflow/scripts && '
+            'python3 silver_label_store.py '
+            '--snapshotdate "{{ ds }}"'
+        ),
+    )
 
-    gold_label_store = DummyOperator(task_id="gold_label_store")
-
-    label_store_completed = DummyOperator(task_id="label_store_completed")
+    gold_label_store = BashOperator(
+        task_id='run_gold_label_store',
+        bash_command=(
+            'cd /opt/airflow/scripts && '
+            'python3 gold_label_store.py '
+            '--snapshotdate "{{ ds }}"'
+        ),
+    )
+    label_store_completed = BashOperator(
+        task_id="label_store_completed",
+        bash_command=(
+        'LABEL_PATH="/opt/airflow/scripts/datamart/gold/label_store"; '
+        'echo "🔍 Checking parquet files in $LABEL_PATH"; '
+        'if ls $LABEL_PATH/*.parquet 1> /dev/null 2>&1; then '
+        '  echo "✅ Parquet files found in $LABEL_PATH"; '
+        '  ls -lh $LABEL_PATH/*.parquet; '
+        'else '
+        '  echo "❌ No parquet files found in $LABEL_PATH" && exit 1; '
+        'fi'
+    ),
+)
 
     # Define task dependencies to run scripts sequentially
     dep_check_source_label_data >> bronze_label_store >> silver_label_store >> gold_label_store >> label_store_completed
@@ -64,13 +99,21 @@ with DAG(
 
     gold_feature_store = DummyOperator(task_id="gold_feature_store")
 
-    feature_store_completed = DummyOperator(task_id="feature_store_completed")
+    model_train = BashOperator(
+        task_id='model_train',
+        bash_command=(
+            f'cd /opt/airflow/scripts && '
+            f'python3 model_train.py '
+            f'--snapshotdate "{end_date:%Y-%m-%d}"'
+        ),
+    )
+
     
     # Define task dependencies to run scripts sequentially
     dep_check_source_data_bronze_1 >> bronze_table_1 >> silver_table_1 >> gold_feature_store
     dep_check_source_data_bronze_2 >> bronze_table_2 >> silver_table_1 >> gold_feature_store
     dep_check_source_data_bronze_3 >> bronze_table_3 >> silver_table_2 >> gold_feature_store
-    gold_feature_store >> feature_store_completed
+    gold_feature_store >> model_train
 
 
     # --- model inference ---
@@ -83,7 +126,7 @@ with DAG(
     model_inference_completed = DummyOperator(task_id="model_inference_completed")
     
     # Define task dependencies to run scripts sequentially
-    feature_store_completed >> model_inference_start
+    model_train >> model_inference_start
     model_inference_start >> model_1_inference >> model_inference_completed
     model_inference_start >> model_2_inference >> model_inference_completed
 
@@ -114,7 +157,7 @@ with DAG(
     model_automl_completed = DummyOperator(task_id="model_automl_completed")
     
     # Define task dependencies to run scripts sequentially
-    feature_store_completed >> model_automl_start
+    model_train >> model_automl_start
     label_store_completed >> model_automl_start
     model_automl_start >> model_1_automl >> model_automl_completed
     model_automl_start >> model_2_automl >> model_automl_completed

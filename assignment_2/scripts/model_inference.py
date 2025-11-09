@@ -27,7 +27,7 @@ from sklearn.model_selection import train_test_split
 
 # to call this script: python model_inference.py --snapshotdate "2024-09-01" --modelname "credit_model_2024_09_01.pkl"
 
-def main(snapshotdate, enddate):
+def main(snapshotdate):
     print('\n\n---starting job---\n\n')
     
     # Initialize SparkSession
@@ -44,13 +44,18 @@ def main(snapshotdate, enddate):
     config = {}
     config["snapshot_date_str"] = snapshotdate
     config["snapshot_date"] = datetime.strptime(config["snapshot_date_str"], "%Y-%m-%d")
-    config["model_date"] = datetime.strptime(enddate, "%Y-%m-%d")
+    config["model_date"] = datetime(2024, 6, 1)
     config["model_name"] = "credit_model_" + config["model_date"].strftime("%Y_%m_%d")
     config["model_bank_directory"] = "model_bank/"
     config["model_artefact_filepath"] = os.path.join(config["model_bank_directory"], config["model_name"] + ".pkl")
     
     pprint.pprint(config)
     
+    if config["snapshot_date"] < config["model_date"]:
+        print(f"Snapshot date is before model date, so no results")
+        spark.stop()
+        return
+
     # Full path to the file
     file_path = config["model_artefact_filepath"]
 
@@ -172,9 +177,8 @@ if __name__ == "__main__":
     # Setup argparse to parse command-line arguments
     parser = argparse.ArgumentParser(description="run job")
     parser.add_argument("--snapshotdate", type=str, required=True, help="YYYY-MM-DD")
-    parser.add_argument("--enddate", type=str, required=True, help="YYYY-MM-DD")
     
     args = parser.parse_args()
     
     # Call main with arguments explicitly passed
-    main(args.snapshotdate, args.enddate)
+    main(args.snapshotdate)

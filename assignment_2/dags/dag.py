@@ -10,15 +10,13 @@ default_args = {
     'retry_delay': timedelta(minutes=5),
 }
 
-end_date=datetime(2024, 12, 1)
-
 with DAG(
     'dag',
     default_args=default_args,
     description='data pipeline run once a month',
     schedule_interval='0 0 1 * *',  # At 00:00 on day-of-month 1
     start_date=datetime(2023, 1, 1),
-    end_date=end_date,
+    end_date=datetime(2024, 12, 31),
     catchup=True,
 ) as dag:
 
@@ -62,22 +60,9 @@ with DAG(
             '--snapshotdate "{{ ds }}"'
         ),
     )
-    label_store_completed = BashOperator(
-        task_id="label_store_completed",
-        bash_command=(
-        'LABEL_PATH="/opt/airflow/scripts/datamart/gold/label_store"; '
-        'echo "🔍 Checking parquet files in $LABEL_PATH"; '
-        'if ls $LABEL_PATH/*.parquet 1> /dev/null 2>&1; then '
-        '  echo "✅ Parquet files found in $LABEL_PATH"; '
-        '  ls -lh $LABEL_PATH/*.parquet; '
-        'else '
-        '  echo "❌ No parquet files found in $LABEL_PATH" && exit 1; '
-        'fi'
-    ),
-)
 
     # Define task dependencies to run scripts sequentially
-    dep_check_source_label_data >> bronze_label_store >> silver_label_store >> gold_label_store >> label_store_completed
+    dep_check_source_label_data >> bronze_label_store >> silver_label_store >> gold_label_store
  
  
     # --- feature store ---
@@ -102,9 +87,9 @@ with DAG(
     model_train = BashOperator(
         task_id='model_train',
         bash_command=(
-            f'cd /opt/airflow/scripts && '
-            f'python3 model_train.py '
-            f'--snapshotdate "{end_date:%Y-%m-%d}"'
+            'cd /opt/airflow/scripts && '
+            'python3 model_train.py '
+            '--snapshotdate "{{ ds }}"'
         ),
     )
 
@@ -120,10 +105,9 @@ with DAG(
     model_inference_start = BashOperator(
     task_id='model_inference',
     bash_command=(
-        f'cd /opt/airflow/scripts && '
-        f'python3 model_inference.py '
-        f'--snapshotdate "{{{{ ds }}}}" '   
-        f'--enddate "{end_date:%Y-%m-%d}"'  
+        'cd /opt/airflow/scripts && '
+        'python3 model_inference.py '
+        '--snapshotdate "{{ ds }}" '   
     ),
 )
 
@@ -146,7 +130,6 @@ with DAG(
             'cd /opt/airflow/scripts && '
             'python3 model_monitor.py '
             '--snapshotdate "{{ ds }}" '
-            f'--enddate "{end_date:%Y-%m-%d}"'
         ),
     )
 
@@ -170,7 +153,6 @@ with DAG(
             'cd /opt/airflow/scripts && '
             'python3 model_automl.py '
             '--snapshotdate "{{ ds }}" '
-            f'--enddate "{end_date:%Y-%m-%d}" '
             '--n_trials 25'
         ),
     )
@@ -183,6 +165,5 @@ with DAG(
     
     # Define task dependencies to run scripts sequentially
     model_train >> model_automl_start
-    label_store_completed >> model_automl_start
     model_automl_start >> model_1_automl >> model_automl_completed
     model_automl_start >> model_2_automl >> model_automl_completed

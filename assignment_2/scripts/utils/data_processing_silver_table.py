@@ -54,7 +54,7 @@ def process_silver_loan_table(snapshot_date_str, bronze_lms_directory, silver_lm
     df = df.withColumn("dpd", F.when(col("overdue_amt") > 0.0, F.datediff(col("snapshot_date"), col("first_missed_date"))).otherwise(0).cast(IntegerType()))
 
     # save silver table - IRL connect to database to write
-    partition_name = "silver_loan_daily_" + snapshot_date_str.replace('-','_') + '.parquet'
+    partition_name = "silver_loan_mthly_" + snapshot_date_str.replace('-','_') + '.parquet'
     filepath = silver_lms_directory + partition_name
     df.write.mode("overwrite").parquet(filepath)
     # df.toPandas().to_parquet(filepath,

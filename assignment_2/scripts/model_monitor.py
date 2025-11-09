@@ -6,14 +6,18 @@ import numpy as np
 import pprint
 from sklearn.metrics import roc_auc_score, f1_score
 
-def main(snapshotdate, enddate):
+from datetime import datetime, timedelta
+from dateutil.relativedelta import relativedelta
+
+def main(snapshotdate):
     print("\n\n--- Starting Model Monitoring ---\n")
 
     # --- setup config ---
     config = {}
     config["snapshot_date_str"] = snapshotdate
-    config["model_date_str"] = enddate
-    config["model_name"] = f"credit_model_{enddate.replace('-', '_')}"
+    config["model_date_str"] = "2024-06-01"
+    config["model_date"] = datetime.strptime(config["model_date_str"], "%Y-%m-%d")
+    config["model_name"] = f"credit_model_{config['model_date_str'].replace('-', '_')}"
     config["pred_path"] = f"datamart/gold/model_predictions/{config['model_name']}/"
     config["label_path"] = "datamart/gold/label_store/"
     config["monitor_output_path"] = "datamart/gold/model_monitor/"
@@ -77,6 +81,5 @@ def main(snapshotdate, enddate):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Model monitoring script")
     parser.add_argument("--snapshotdate", type=str, required=True, help="YYYY-MM-DD (inference date)")
-    parser.add_argument("--enddate", type=str, required=True, help="YYYY-MM-DD (model date)")
     args = parser.parse_args()
-    main(args.snapshotdate, args.enddate)
+    main(args.snapshotdate)
